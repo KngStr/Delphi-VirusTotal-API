@@ -10,7 +10,7 @@ uses
 {$ENDIF}
   XSuperObject;
 
-{ TODO -oOwner -cGeneral : Преобразовать время: Строка=>TDateTime }
+{ TODO -oOwner -cGeneral : Translate time to TDateTime }
 Type
   TvtFileSend = Packed Record
     verbose_msg, resource, scan_id, permalink, sha256, sha1, md5: String;
