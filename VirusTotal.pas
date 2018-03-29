@@ -1,3 +1,5 @@
+//API docs: https://developers.virustotal.com/v2.0/
+
 unit VirusTotal;
 
 interface
@@ -5,6 +7,7 @@ interface
 { /$DEFINE vtDateTimeHelper }
 
 uses
+  Windows,
 {$IFDEF vtDateTimeHelper}
   DateTimeHelper,
 {$ENDIF}
@@ -101,6 +104,7 @@ type
     response_code, total, positives: Integer;
     scans: TvtAVItemsURL;
   end;
+
 {$M+}
 
   TVirusTotalAPI = class
@@ -123,7 +127,7 @@ type
       : TvtURLReport; overload;
     function reportURL(const URLs: TArray<string>; scan: Boolean = False)
       : TArray<TvtURLReport>; overload;
-    function reportIpAddress(const IP: string): TArray<TvtURLReport>; overload;
+    // function reportIpAddress(Const IP: String): TArray<TvtURLReport>; overload;
     constructor Create;
     destructor Destroy; override;
   published
@@ -134,6 +138,7 @@ implementation
 
 uses
   System.SysUtils, System.Net.HttpClient, System.Net.Mime;
+
 { TVirusTotalAPI }
 
 constructor TVirusTotalAPI.Create;
@@ -148,14 +153,26 @@ begin
 end;
 
 function TVirusTotalAPI.reportFile(const Hash: string): TvtFileReport;
+var
+  List: TArray<TvtFileReport>;
 begin
-  result := reportFile([Hash])[0];
+  List := reportFile([Hash]);
+  if Length(List) > 0 then
+    Result := List[0]
+  else
+    ZeroMemory(@Result, SizeOf(TvtFileReport));
 end;
 
 function TVirusTotalAPI.reportURL(const url: string; scan: Boolean)
   : TvtURLReport;
+var
+  List: TArray<TvtURLReport>;
 begin
-  result := reportURL([url], scan)[0];
+  List := reportURL([url], scan);
+  if Length(List) > 0 then
+    Result := List[0]
+  else
+    ZeroMemory(@Result, SizeOf(TvtURLReport));
 end;
 
 function TVirusTotalAPI.reportURL(const URLs: TArray<string>; scan: Boolean)
@@ -167,7 +184,9 @@ var
   Part: TMultipartFormData;
   I: Integer;
   X: ISuperArray;
+  sContent: string;
 begin
+  SetLength(Result, 0);
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
@@ -175,15 +194,20 @@ begin
     if scan then
       Part.AddField('scan', '1');
     Part.AddField('apikey', ApiKey);
-    X := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
-    SetLength(result, Length(URLs));
+    sContent := HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8);
+    if sContent = '' then
+      Exit;
+    X := SA(sContent);
+    if X = nil then
+      Exit;
+    SetLength(Result, Length(URLs));
     if Length(URLs) > 1 then
     begin
       for I := 0 to X.Length - 1 do
-        result[I] := TSuperRecord<TvtURLReport>.FromJSON(X.O[I]);
+        Result[I] := TSuperRecord<TvtURLReport>.FromJSON(X.O[I]);
     end
     else
-      result[0] := TSuperRecord<TvtURLReport>.FromJSON(X.AsJSON);
+      Result[0] := TSuperRecord<TvtURLReport>.FromJSON(X.AsJSON);
   finally
     Part.Free;
     HTTP.Free;
@@ -199,21 +223,28 @@ var
   Part: TMultipartFormData;
   I: Integer;
   Y: ISuperArray;
+  sContent: string;
 begin
+  SetLength(Result, 0);
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
     Part.AddField('resource', string.Join(', ', Hash));
     Part.AddField('apikey', ApiKey);
-    Y := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
-    SetLength(result, Length(Hash));
+    sContent := HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8);
+    if sContent = '' then
+      Exit;
+    Y := SA(sContent);
+    if Y = nil then
+      Exit;
+    SetLength(Result, Length(Hash));
     if Length(Hash) > 1 then
     begin
       for I := 0 to Y.Length - 1 do
-        result[I] := TSuperRecord<TvtFileReport>.FromJSON(Y.O[I]);
+        Result[I] := TSuperRecord<TvtFileReport>.FromJSON(Y.O[I]);
     end
     else
-      result[0] := TSuperRecord<TvtFileReport>.FromJSON(Y.AsJSON);
+      Result[0] := TSuperRecord<TvtFileReport>.FromJSON(Y.AsJSON);
   finally
     Part.Free;
     HTTP.Free;
@@ -230,16 +261,22 @@ var
   Part: TMultipartFormData;
   I: Integer;
   X: ISuperArray;
+  sContent: string;
 begin
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
     Part.AddField('resource', string.Join(', ', Hash));
     Part.AddField('apikey', ApiKey);
-    X := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
-    SetLength(result, X.Length);
+    sContent := HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8);
+    if sContent = '' then
+      Exit;
+    X := SA(sContent);
+    if X = nil then
+      Exit;
+    SetLength(Result, X.Length);
     for I := 0 to X.Length - 1 do
-      result[I] := TSuperRecord<TvtFileSend>.FromJSON(X.O[I]);
+      Result[I] := TSuperRecord<TvtFileSend>.FromJSON(X.O[I]);
   finally
     Part.Free;
     HTTP.Free;
@@ -247,8 +284,14 @@ begin
 end;
 
 function TVirusTotalAPI.RescanFile(const Hash: string): TvtFileSend;
+var
+  List: TArray<TvtFileSend>;
 begin
-  result := RescanFile([Hash])[0];
+  List := RescanFile([Hash]);
+  if Length(List) > 0 then
+    Result := List[0]
+  else
+    ZeroMemory(@Result, SizeOf(TvtFileSend));
 end;
 
 function TVirusTotalAPI.ScanFile(const FileName: string): TvtFileSend;
@@ -257,14 +300,18 @@ const
 var
   HTTP: THTTPClient;
   Part: TMultipartFormData;
+  sContent: string;
 begin
+  ZeroMemory(@Result, SizeOf(TvtFileSend));
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
     Part.AddFile('file', FileName);
     Part.AddField('apikey', ApiKey);
-    result := TSuperRecord<TvtFileSend>.FromJSON(HTTP.Post(SERVER + API, Part)
-      .ContentAsString(TEncoding.UTF8));
+    sContent := HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8);
+    if sContent = '' then
+      Exit;
+    Result := TSuperRecord<TvtFileSend>.FromJSON(sContent);
   finally
     Part.Free;
     HTTP.Free;
@@ -272,8 +319,14 @@ begin
 end;
 
 function TVirusTotalAPI.scanURL(const url: string): TvtURLSend;
+var
+  List: TArray<TvtURLSend>;
 begin
-  result := scanURL([url])[0];
+  List := scanURL([url]);
+  if Length(List) > 0 then
+    Result := List[0]
+  else
+    ZeroMemory(@Result, SizeOf(TvtURLSend));
 end;
 
 function TVirusTotalAPI.scanURL(const URLs: TArray<string>): TArray<TvtURLSend>;
@@ -284,21 +337,28 @@ var
   Part: TMultipartFormData;
   I: Integer;
   X: ISuperArray;
+  sContent: string;
 begin
+  SetLength(Result, 0);
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
     Part.AddField('url', string.Join(#13#10, URLs));
     Part.AddField('apikey', ApiKey);
-    X := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
-    SetLength(result, Length(URLs));
+    sContent := HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8);
+    if sContent = '' then
+      Exit;
+    X := SA(sContent);
+    if X = nil then
+      Exit;
+    SetLength(Result, Length(URLs));
     if Length(URLs) > 1 then
     begin
       for I := 0 to X.Length - 1 do
-        result[I] := TSuperRecord<TvtURLSend>.FromJSON(X.O[I]);
+        Result[I] := TSuperRecord<TvtURLSend>.FromJSON(X.O[I]);
     end
     else
-      result[0] := TSuperRecord<TvtURLSend>.FromJSON(X.AsJSON);
+      Result[0] := TSuperRecord<TvtURLSend>.FromJSON(X.AsJSON);
   finally
     Part.Free;
     HTTP.Free;
