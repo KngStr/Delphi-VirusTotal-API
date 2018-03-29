@@ -11,28 +11,28 @@ uses
   XSuperObject;
 
 { TODO -oOwner -cGeneral : Translate time to TDateTime }
-Type
-  TvtFileSend = Packed Record
-    verbose_msg, resource, scan_id, permalink, sha256, sha1, md5: String;
-  End;
+type
+  TvtFileSend = packed record
+    verbose_msg, resource, scan_id, permalink, sha256, sha1, md5: string;
+  end;
 
-  TvtURLSend = Packed Record
-  Public
-    verbose_msg, resource, url, scan_id, permalink: String;
-    scan_date: String;
-  End;
+  TvtURLSend = packed record
+  public
+    verbose_msg, resource, url, scan_id, permalink: string;
+    scan_date: string;
+  end;
 
-  TvtAntiVirusItemFile = Packed Record
+  TvtAntiVirusItemFile = packed record
     detected: Boolean;
-    version, result, update: String;
-  End;
+    version, result, update: string;
+  end;
 
-  TvtAntiVirusItemURL = Packed Record
+  TvtAntiVirusItemURL = packed record
     detected: Boolean;
-    result: String;
-  End;
+    result: string;
+  end;
 
-  TvtAVItemsURL = Packed Record
+  TvtAVItemsURL = packed record
   public
     Opera, TrendMicro, Phishtank, BitDefender, MalwareDomainList, ParetoLogic,
       Avira, Wepawet: TvtAntiVirusItemURL;
@@ -44,9 +44,9 @@ Type
     G_Data: TvtAntiVirusItemURL;
     [ALIAS('Websense ThreatSeeker')]
     WebsenseThreatSeeker: TvtAntiVirusItemURL;
-  End;
+  end;
 
-  TvtAVItemsFile = Packed Record
+  TvtAVItemsFile = packed record
   public
     AVG, AVware, AegisLab, Agnitum, Alibaba, Arcabit, Avast, Avira, BitDefender,
       Bkav, ByteHero, CMC, ClamAV, Comodo, Cyren, Emsisoft, Fortinet, GData,
@@ -78,64 +78,62 @@ Type
     NANO_Antivirus: TvtAntiVirusItemFile;
     [ALIAS('TrendMicro-HouseCall')]
     TrendMicro_HouseCall: TvtAntiVirusItemFile;
-  End;
+  end;
 
-  TvtFileReport = Packed Record
+  TvtFileReport = packed record
     scan_id, sha1, resource, scan_date, permalink, verbose_msg, sha256,
-      md5: String;
+      md5: string;
     response_code, total, positives: Integer;
     scans: TvtAVItemsFile;
-  End;
+  end;
 
-  TvtIPreport = Packed Record
-  Public
+  TvtIPreport = packed record
+  public
     verbose_msg, resource, url, scan_id, scan_date, permalink,
-      filescan_id: String;
+      filescan_id: string;
     response_code, total, positives: Integer;
     scans: TvtAVItemsURL;
-  End;
+  end;
 
-  TvtURLReport = Packed Record
+  TvtURLReport = packed record
     verbose_msg, resource, url, scan_id, scan_date, permalink,
-      filescan_id: String;
+      filescan_id: string;
     response_code, total, positives: Integer;
     scans: TvtAVItemsURL;
-  End;
+  end;
 {$M+}
 
-  TVirusTotalAPI = Class
-  Strict Private
-  Const
+  TVirusTotalAPI = class
+  strict private
+  const
     SERVER = 'https://www.virustotal.com/vtapi/v2/';
   private
-    FApiKey: String;
+    FApiKey: string;
   public
-    Function ScanFile(Const FileName: String): TvtFileSend;
-    Function RescanFile(Const Hash: String): TvtFileSend; overload;
-    Function RescanFile(Const Hash: TArray<String>)
+    function ScanFile(const FileName: string): TvtFileSend;
+    function RescanFile(const Hash: string): TvtFileSend; overload;
+    function RescanFile(const Hash: TArray<string>)
       : TArray<TvtFileSend>; overload;
-    Function reportFile(Const Hash: TArray<String>)
+    function reportFile(const Hash: TArray<string>)
       : TArray<TvtFileReport>; overload;
-    Function reportFile(Const Hash: String): TvtFileReport; overload;
-    Function scanURL(Const URLs: TArray<String>): TArray<TvtURLSend>; overload;
-    Function scanURL(Const url: String): TvtURLSend; overload;
-    function reportURL(Const url: String; scan: Boolean = False)
+    function reportFile(const Hash: string): TvtFileReport; overload;
+    function scanURL(const URLs: TArray<string>): TArray<TvtURLSend>; overload;
+    function scanURL(const url: string): TvtURLSend; overload;
+    function reportURL(const url: string; scan: Boolean = False)
       : TvtURLReport; overload;
-    function reportURL(Const URLs: TArray<String>; scan: Boolean = False)
+    function reportURL(const URLs: TArray<string>; scan: Boolean = False)
       : TArray<TvtURLReport>; overload;
-    function reportIpAddress(Const IP: String): TArray<TvtURLReport>; overload;
+    function reportIpAddress(const IP: string): TArray<TvtURLReport>; overload;
     constructor Create;
     destructor Destroy; override;
   published
-    property ApiKey: String read FApiKey write FApiKey;
-  End;
+    property ApiKey: string read FApiKey write FApiKey;
+  end;
 
 implementation
 
 uses
-  System.SysUtils,
-  System.Net.HttpClient,
-  System.Net.Mime;
+  System.SysUtils, System.Net.HttpClient, System.Net.Mime;
 { TVirusTotalAPI }
 
 constructor TVirusTotalAPI.Create;
@@ -149,20 +147,20 @@ begin
   inherited;
 end;
 
-function TVirusTotalAPI.reportFile(const Hash: String): TvtFileReport;
+function TVirusTotalAPI.reportFile(const Hash: string): TvtFileReport;
 begin
   result := reportFile([Hash])[0];
 end;
 
-function TVirusTotalAPI.reportURL(const url: String; scan: Boolean)
+function TVirusTotalAPI.reportURL(const url: string; scan: Boolean)
   : TvtURLReport;
 begin
   result := reportURL([url], scan)[0];
 end;
 
-function TVirusTotalAPI.reportURL(const URLs: TArray<String>; scan: Boolean)
+function TVirusTotalAPI.reportURL(const URLs: TArray<string>; scan: Boolean)
   : TArray<TvtURLReport>;
-Const
+const
   API = 'url/report';
 var
   HTTP: THTTPClient;
@@ -173,17 +171,17 @@ begin
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
-    Part.AddField('resource', String.Join(#13#10, URLs));
+    Part.AddField('resource', string.Join(#13#10, URLs));
     if scan then
       Part.AddField('scan', '1');
     Part.AddField('apikey', ApiKey);
     X := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
     SetLength(result, Length(URLs));
     if Length(URLs) > 1 then
-    BEGIN
+    begin
       for I := 0 to X.Length - 1 do
         result[I] := TSuperRecord<TvtURLReport>.FromJSON(X.O[I]);
-    END
+    end
     else
       result[0] := TSuperRecord<TvtURLReport>.FromJSON(X.AsJSON);
   finally
@@ -192,29 +190,28 @@ begin
   end;
 end;
 
-function TVirusTotalAPI.reportFile(const Hash: TArray<String>)
+function TVirusTotalAPI.reportFile(const Hash: TArray<string>)
   : TArray<TvtFileReport>;
-Const
+const
   API = 'file/report';
 var
   HTTP: THTTPClient;
   Part: TMultipartFormData;
-
   I: Integer;
   Y: ISuperArray;
 begin
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
-    Part.AddField('resource', String.Join(', ', Hash));
+    Part.AddField('resource', string.Join(', ', Hash));
     Part.AddField('apikey', ApiKey);
     Y := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
     SetLength(result, Length(Hash));
     if Length(Hash) > 1 then
-    Begin
+    begin
       for I := 0 to Y.Length - 1 do
         result[I] := TSuperRecord<TvtFileReport>.FromJSON(Y.O[I]);
-    End
+    end
     else
       result[0] := TSuperRecord<TvtFileReport>.FromJSON(Y.AsJSON);
   finally
@@ -224,9 +221,9 @@ begin
 
 end;
 
-function TVirusTotalAPI.RescanFile(const Hash: TArray<String>)
+function TVirusTotalAPI.RescanFile(const Hash: TArray<string>)
   : TArray<TvtFileSend>;
-Const
+const
   API = 'file/rescan';
 var
   HTTP: THTTPClient;
@@ -237,7 +234,7 @@ begin
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
-    Part.AddField('resource', String.Join(', ', Hash));
+    Part.AddField('resource', string.Join(', ', Hash));
     Part.AddField('apikey', ApiKey);
     X := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
     SetLength(result, X.Length);
@@ -249,13 +246,13 @@ begin
   end;
 end;
 
-function TVirusTotalAPI.RescanFile(const Hash: String): TvtFileSend;
+function TVirusTotalAPI.RescanFile(const Hash: string): TvtFileSend;
 begin
   result := RescanFile([Hash])[0];
 end;
 
-Function TVirusTotalAPI.ScanFile(const FileName: String): TvtFileSend;
-Const
+function TVirusTotalAPI.ScanFile(const FileName: string): TvtFileSend;
+const
   API = 'file/scan';
 var
   HTTP: THTTPClient;
@@ -274,13 +271,13 @@ begin
   end;
 end;
 
-function TVirusTotalAPI.scanURL(const url: String): TvtURLSend;
+function TVirusTotalAPI.scanURL(const url: string): TvtURLSend;
 begin
   result := scanURL([url])[0];
 end;
 
-function TVirusTotalAPI.scanURL(const URLs: TArray<String>): TArray<TvtURLSend>;
-Const
+function TVirusTotalAPI.scanURL(const URLs: TArray<string>): TArray<TvtURLSend>;
+const
   API = 'url/scan';
 var
   HTTP: THTTPClient;
@@ -291,15 +288,15 @@ begin
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
-    Part.AddField('url', String.Join(#13#10, URLs));
+    Part.AddField('url', string.Join(#13#10, URLs));
     Part.AddField('apikey', ApiKey);
     X := SA(HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8));
     SetLength(result, Length(URLs));
     if Length(URLs) > 1 then
-    BEGIN
+    begin
       for I := 0 to X.Length - 1 do
         result[I] := TSuperRecord<TvtURLSend>.FromJSON(X.O[I]);
-    END
+    end
     else
       result[0] := TSuperRecord<TvtURLSend>.FromJSON(X.AsJSON);
   finally

@@ -1,0 +1,14 @@
+*.res
+*.dcu
+*.dproj.local
+*.identcache
+__history
+*.groupproj.local
+
+CompileTime.inc
+
+*.drc
+*.mes
+*.map
+bugreport.txt
+
