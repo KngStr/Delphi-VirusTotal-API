@@ -1,5 +1,6 @@
 //API docs: https://developers.virustotal.com/v2.0/
 
+
 unit VirusTotal;
 
 interface
@@ -27,67 +28,19 @@ type
 
   TvtAntiVirusItemFile = packed record
     detected: Boolean;
-    version, result, update: string;
+    name, version, result, update: string;
   end;
 
   TvtAntiVirusItemURL = packed record
     detected: Boolean;
-    result: string;
-  end;
-
-  TvtAVItemsURL = packed record
-  public
-    Opera, TrendMicro, Phishtank, BitDefender, MalwareDomainList, ParetoLogic,
-      Avira, Wepawet: TvtAntiVirusItemURL;
-    [ALIAS('Dr.Web')]
-    drWeb: TvtAntiVirusItemURL;
-    [ALIAS('Malc0de Database')]
-    Malc0deDatabase: TvtAntiVirusItemURL;
-    [ALIAS('G-Data')]
-    G_Data: TvtAntiVirusItemURL;
-    [ALIAS('Websense ThreatSeeker')]
-    WebsenseThreatSeeker: TvtAntiVirusItemURL;
-  end;
-
-  TvtAVItemsFile = packed record
-  public
-    AVG, AVware, AegisLab, Agnitum, Alibaba, Arcabit, Avast, Avira, BitDefender,
-      Bkav, ByteHero, CMC, ClamAV, Comodo, Cyren, Emsisoft, Fortinet, GData,
-      Ikarus, Jiangmin, K7AntiVirus, K7GW, Kaspersky, Malwarebytes, McAfee,
-      Microsoft, Panda, Rising, SUPERAntiSpyware, Sophos, Symantec, Tencent,
-      TheHacker, TotalDefense, TrendMicro, VBA32, VIPRE, ViRobot, Zillya, Zoner,
-      nProtect: TvtAntiVirusItemFile;
-    [ALIAS('Ad-Aware')]
-    Ad_Aware: TvtAntiVirusItemFile;
-    [ALIAS('AhnLab-V3')]
-    AhnLab_V3: TvtAntiVirusItemFile;
-    [ALIAS('Antiy-AVL')]
-    Antiy_AVL: TvtAntiVirusItemFile;
-    [ALIAS('Baidu-International')]
-    Baidu_International: TvtAntiVirusItemFile;
-    [ALIAS('CAT-QuickHeal')]
-    CAT_QuickHeal: TvtAntiVirusItemFile;
-    [ALIAS('ESET-NOD32')]
-    ESET_NOD32: TvtAntiVirusItemFile;
-    [ALIAS('F-Prot')]
-    F_Prot: TvtAntiVirusItemFile;
-    [ALIAS('F-Secure')]
-    F_Secure: TvtAntiVirusItemFile;
-    [ALIAS('McAfee-GW-Edition')]
-    McAfee_GW_Edition: TvtAntiVirusItemFile;
-    [ALIAS('MicroWorld-eScan')]
-    MicroWorld_eScan: TvtAntiVirusItemFile;
-    [ALIAS('NANO-Antivirus')]
-    NANO_Antivirus: TvtAntiVirusItemFile;
-    [ALIAS('TrendMicro-HouseCall')]
-    TrendMicro_HouseCall: TvtAntiVirusItemFile;
+    name, result: string;
   end;
 
   TvtFileReport = packed record
     scan_id, sha1, resource, scan_date, permalink, verbose_msg, sha256,
       md5: string;
     response_code, total, positives: Integer;
-    scans: TvtAVItemsFile;
+    scans: TArray<TvtAntiVirusItemFile>;
   end;
 
   TvtIPreport = packed record
@@ -95,14 +48,14 @@ type
     verbose_msg, resource, url, scan_id, scan_date, permalink,
       filescan_id: string;
     response_code, total, positives: Integer;
-    scans: TvtAVItemsURL;
+    scans: TArray<TvtAntiVirusItemURL>;
   end;
 
   TvtURLReport = packed record
-    verbose_msg, resource, url, scan_id, scan_date, permalink,
+    verbose_msg, url, scan_id, scan_date, permalink,
       filescan_id: string;
     response_code, total, positives: Integer;
-    scans: TvtAVItemsURL;
+    scans: TArray<TvtAntiVirusItemURL>;
   end;
 
 {$M+}
@@ -148,7 +101,6 @@ end;
 
 destructor TVirusTotalAPI.Destroy;
 begin
-
   inherited;
 end;
 
@@ -177,6 +129,37 @@ end;
 
 function TVirusTotalAPI.reportURL(const URLs: TArray<string>; scan: Boolean)
   : TArray<TvtURLReport>;
+
+  function Get(S: string): TvtURLReport;
+  var
+    X: ISuperObject;
+    Y: IMember;
+    I: Integer;
+  begin
+    X := TSuperObject.Create(S);
+
+    ZeroMemory(@Result, SizeOf(Result));
+    with Result do begin
+      scan_id := X.S['scan_id'];
+      url := X.S['url'];
+      filescan_id := X.S['filescan_id'];
+      scan_date := X.S['scan_date'];
+      permalink := X.S['permalink'];
+      verbose_msg := X.S['verbose_msg'];
+      response_code := X.I['response_code'];
+      total := X.I['total'];
+      positives := X.I['positives'];
+
+      SetLength(scans, X.O['scans'].Count);
+      I := 0;
+      for Y in X.O['scans'] do begin
+        scans[I] := TSuperRecord<TvtAntiVirusItemURL>.FromJSON(Y.AsObject.AsJSON);
+        scans[I].name := Y.Name;
+        Inc(I);
+      end;
+    end;
+  end;
+
 const
   API = 'url/report';
 var
@@ -204,10 +187,10 @@ begin
     if Length(URLs) > 1 then
     begin
       for I := 0 to X.Length - 1 do
-        Result[I] := TSuperRecord<TvtURLReport>.FromJSON(X.O[I]);
+        Result[I] := Get(X.O[I].AsJSON);
     end
     else
-      Result[0] := TSuperRecord<TvtURLReport>.FromJSON(X.AsJSON);
+      Result[0] := Get(X.AsJSON);
   finally
     Part.Free;
     HTTP.Free;
@@ -216,6 +199,39 @@ end;
 
 function TVirusTotalAPI.reportFile(const Hash: TArray<string>)
   : TArray<TvtFileReport>;
+
+  function Get(S: string): TvtFileReport;
+  var
+    X: ISuperObject;
+    Y: IMember;
+    I: Integer;
+  begin
+    X := TSuperObject.Create(S);
+
+    ZeroMemory(@Result, SizeOf(Result));
+    with Result do begin
+      scan_id := X.S['scan_id'];
+      sha1 := X.S['sha1'];
+      resource := X.S['resource'];
+      scan_date := X.S['scan_date'];
+      permalink := X.S['permalink'];
+      verbose_msg := X.S['verbose_msg'];
+      sha256 := X.S['sha256'];
+      md5 := X.S['md5'];
+      response_code := X.I['response_code'];
+      total := X.I['total'];
+      positives := X.I['positives'];
+
+      SetLength(scans, X.O['scans'].Count);
+      I := 0;
+      for Y in X.O['scans'] do begin
+        scans[I] := TSuperRecord<TvtAntiVirusItemFile>.FromJSON(Y.AsObject.AsJSON);
+        scans[I].name := Y.Name;
+        Inc(I);
+      end;
+    end;
+  end;
+
 const
   API = 'file/report';
 var
@@ -241,10 +257,10 @@ begin
     if Length(Hash) > 1 then
     begin
       for I := 0 to Y.Length - 1 do
-        Result[I] := TSuperRecord<TvtFileReport>.FromJSON(Y.O[I]);
+        Result[I] := Get(Y.O[I].AsJSON);
     end
     else
-      Result[0] := TSuperRecord<TvtFileReport>.FromJSON(Y.AsJSON);
+      Result[0] := Get(Y.AsJSON);
   finally
     Part.Free;
     HTTP.Free;
@@ -261,8 +277,10 @@ var
   Part: TMultipartFormData;
   I: Integer;
   X: ISuperArray;
+  Y: ISuperObject;
   sContent: string;
 begin
+  SetLength(Result, 0);
   HTTP := THTTPClient.Create;
   Part := TMultipartFormData.Create;
   try
@@ -271,12 +289,21 @@ begin
     sContent := HTTP.Post(SERVER + API, Part).ContentAsString(TEncoding.UTF8);
     if sContent = '' then
       Exit;
-    X := SA(sContent);
-    if X = nil then
-      Exit;
-    SetLength(Result, X.Length);
-    for I := 0 to X.Length - 1 do
-      Result[I] := TSuperRecord<TvtFileSend>.FromJSON(X.O[I]);
+    if Length(Hash) > 1 then begin
+      X := SA(sContent);
+      if X = nil then
+        Exit;
+      SetLength(Result, X.Length);
+      for I := 0 to X.Length - 1 do
+        Result[I] := TSuperRecord<TvtFileSend>.FromJSON(X.O[I]);
+    end
+    else begin
+      Y := SO(sContent);
+      if Y = nil then
+        Exit;
+      SetLength(Result, 1);
+      Result[0] := TSuperRecord<TvtFileSend>.FromJSON(Y);
+    end;
   finally
     Part.Free;
     HTTP.Free;
