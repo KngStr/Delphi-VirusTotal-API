@@ -11,6 +11,7 @@ The VirusTotal API lets you upload and scan files or URLs, access finished scan 
 Author
 ---------------
 Maxim Sysoev / https://github.com/ms301/VirusTotal
+
 Portions By KngStr. 
 
 Как работать

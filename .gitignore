@@ -12,3 +12,4 @@ CompileTime.inc
 *.map
 bugreport.txt
 
+*.exe
