@@ -1,0 +1,3 @@
+[submodule "libs/x-superobject"]
+	path = libs/x-superobject
+	url = git@github.com:onryldz/x-superobject.git
